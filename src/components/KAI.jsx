@@ -324,12 +324,8 @@ ${activeCouponsList.length > 0 ? activeCouponsList.map(c => `- ${c.tag}: ${c.tit
                 <div className="kai-head__cart">🛒 {itemCount}</div>
               )}
 
-              <button className="kai-head__btn" onClick={() => setKeyMode(v => !v)} title="API Settings">
-                ⚙️
-              </button>
-              <button className="kai-head__btn" onClick={() => setOpen(false)} title="Close">
-                ✕
-              </button>
+              <button className="kai-head__settings" onClick={() => setKeyMode(v => !v)} title="API Settings">⚙️</button>
+              <button className="kai-head__close" onClick={() => setOpen(false)} title="Close" aria-label="Close KAI">✕</button>
             </div>
 
             {/* API Key Panel */}

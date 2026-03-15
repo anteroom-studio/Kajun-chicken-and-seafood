@@ -411,3 +411,15 @@
   .kai-bubble--open { bottom: 20px; right: 16px; }
   .kai-callout { display: none; }
 }
+
+/* Close button — bigger on mobile */
+@media (max-width: 600px) {
+  .kai-head__close {
+    width: 40px; height: 40px;
+    font-size: 18px;
+    background: var(--k-red);
+    border-color: var(--k-red);
+    color: #fff;
+  }
+  .kai-head__close:hover { background: var(--k-red-hi); }
+}
