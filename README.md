@@ -9,7 +9,11 @@ npm install
 npm run dev
 # → http://localhost:5173/kajun-chicken/
 ```
-
+```bash
+________is the password for kajun website
+https://zawwarsami16.github.io/Kajun-chicken-and-seafood
+https://zawwarsami16.github.io/Kajun-chicken-and-seafood/admin
+```
 ## 🔑 Setup Groq API Key
 
 **Option 1 — .env file (local dev):**
