@@ -1,15 +1,22 @@
 /**
- * KAJUN CHICKEN & SEAFOOD — Admin Store v4
+ * KAJUN CHICKEN & SEAFOOD — Admin Store v5
  * Designed & Built by ZAI (Zawwar Sami)
  * github.com/zawwarsami16
  * All Rights Reserved © 2025 Zawwar Sami
+ *
+ * Persistence: JSONBin.io (free cloud storage)
+ * Falls back to localStorage if cloud unavailable
  */
-import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { MENU } from '../data/menu';
 import { COUPONS as BASE_COUPONS, DAILY_SPECIALS as BASE_SPECIALS } from '../data/specials';
 
-const STORE_KEY = 'kajun_admin_v4';
-const AUTH_KEY  = 'kajun_auth_v4';
+const LOCAL_KEY = 'kajun_admin_v5';
+const AUTH_KEY  = 'kajun_auth_v5';
+
+// JSONBin config — free at jsonbin.io
+// Admin sets this once in Branding tab
+const JSONBIN_URL = 'https://api.jsonbin.io/v3/b';
 
 const DEFAULT = {
   unavailable: [
@@ -32,11 +39,14 @@ const DEFAULT = {
   footerGithub: 'https://github.com/zawwarsami16',
   footerRights: 'All Rights Reserved © 2025 Zawwar Sami',
   kaiGreeting: "Hey! I'm KAI — your Kajun order guide. How many people are eating today?",
+  // Cloud sync config
+  jsonbinId:  '69b6e5c8aa77b81da9e89e74',
+  jsonbinKey: '$2a$10$N1KAZBtfevrn7vTGLtilYenMQgjbx24wHTykaftMUOTOIoGq9aspW',
 };
 
-function load() {
+function loadLocal() {
   try {
-    const s = localStorage.getItem(STORE_KEY);
+    const s = localStorage.getItem(LOCAL_KEY);
     if (s) {
       const p = JSON.parse(s);
       return {
@@ -47,27 +57,88 @@ function load() {
         activeCouponIds: Array.isArray(p.activeCouponIds)  ? p.activeCouponIds  : DEFAULT.activeCouponIds,
         customDeals:     Array.isArray(p.customDeals)      ? p.customDeals      : [],
         activeDealIds:   Array.isArray(p.activeDealIds)    ? p.activeDealIds    : DEFAULT.activeDealIds,
-        priceOverrides:  (p.priceOverrides && typeof p.priceOverrides==='object') ? p.priceOverrides : {},
-        imageOverrides:  (p.imageOverrides && typeof p.imageOverrides==='object') ? p.imageOverrides : {},
+        priceOverrides:  (p.priceOverrides  && typeof p.priceOverrides==='object')  ? p.priceOverrides  : {},
+        imageOverrides:  (p.imageOverrides  && typeof p.imageOverrides==='object')  ? p.imageOverrides  : {},
       };
     }
   } catch {}
   return { ...DEFAULT };
 }
 
-const persist = (s) => { try { localStorage.setItem(STORE_KEY, JSON.stringify(s)); } catch {} };
-
 const Ctx = createContext(null);
 
 export function AdminProvider({ children }) {
-  const [store, setStore] = useState(load);
+  const [store, setStore]   = useState(loadLocal);
   const [authed, setAuthed] = useState(() => {
     try { return localStorage.getItem(AUTH_KEY) === '1'; } catch { return false; }
   });
-  useEffect(() => { persist(store); }, [store]);
+  const [cloudStatus, setCloudStatus] = useState('idle'); // idle | saving | saved | error
+  const saveTimer = useRef(null);
 
-  const set = useCallback((patch) => setStore(p => ({ ...p, ...patch })), []);
+  // Always save to localStorage
+  useEffect(() => {
+    try { localStorage.setItem(LOCAL_KEY, JSON.stringify(store)); } catch {}
+  }, [store]);
 
+  // Load from cloud on first visit (if configured)
+  useEffect(() => {
+    const { jsonbinId, jsonbinKey } = loadLocal();
+    if (jsonbinId && jsonbinKey) {
+      fetch(`${JSONBIN_URL}/${jsonbinId}/latest`, {
+        headers: { 'X-Master-Key': jsonbinKey }
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data?.record) {
+          const merged = {
+            ...DEFAULT,
+            ...data.record,
+            unavailable:     Array.isArray(data.record.unavailable)     ? data.record.unavailable     : DEFAULT.unavailable,
+            customItems:     Array.isArray(data.record.customItems)      ? data.record.customItems      : [],
+            customCoupons:   Array.isArray(data.record.customCoupons)    ? data.record.customCoupons    : [],
+            activeCouponIds: Array.isArray(data.record.activeCouponIds)  ? data.record.activeCouponIds  : DEFAULT.activeCouponIds,
+            customDeals:     Array.isArray(data.record.customDeals)      ? data.record.customDeals      : [],
+            activeDealIds:   Array.isArray(data.record.activeDealIds)    ? data.record.activeDealIds    : DEFAULT.activeDealIds,
+            priceOverrides:  (data.record.priceOverrides && typeof data.record.priceOverrides==='object') ? data.record.priceOverrides : {},
+            imageOverrides:  (data.record.imageOverrides && typeof data.record.imageOverrides==='object') ? data.record.imageOverrides : {},
+          };
+          setStore(merged);
+        }
+      })
+      .catch(() => {}); // silently fall back to localStorage
+    }
+  }, []);
+
+  // Save to cloud (debounced 1.5s after last change)
+  const saveToCloud = useCallback((newStore) => {
+    const { jsonbinId, jsonbinKey } = newStore;
+    if (!jsonbinId || !jsonbinKey) return;
+    clearTimeout(saveTimer.current);
+    setCloudStatus('saving');
+    saveTimer.current = setTimeout(() => {
+      fetch(`${JSONBIN_URL}/${jsonbinId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Master-Key': jsonbinKey,
+        },
+        body: JSON.stringify(newStore),
+      })
+      .then(r => r.json())
+      .then(() => { setCloudStatus('saved'); setTimeout(() => setCloudStatus('idle'), 2500); })
+      .catch(() => { setCloudStatus('error'); });
+    }, 1500);
+  }, []);
+
+  const set = useCallback((patch) => {
+    setStore(prev => {
+      const next = { ...prev, ...patch };
+      saveToCloud(next);
+      return next;
+    });
+  }, [saveToCloud]);
+
+  // Auth
   const login  = useCallback((pass) => {
     const ok = (typeof import.meta!=='undefined' && import.meta.env?.VITE_ADMIN_PASS) || 'kajun2025';
     if (pass === ok) { setAuthed(true); localStorage.setItem(AUTH_KEY,'1'); return true; }
@@ -75,36 +146,46 @@ export function AdminProvider({ children }) {
   }, []);
   const logout = useCallback(() => { setAuthed(false); localStorage.removeItem(AUTH_KEY); }, []);
 
+  // Availability
   const isAvailable = useCallback((id) => !(store.unavailable||[]).includes(id), [store.unavailable]);
-  const toggleItem  = useCallback((id) => setStore(p => {
-    const l = (p.unavailable||[]).includes(id) ? (p.unavailable||[]).filter(x=>x!==id) : [...(p.unavailable||[]),id];
-    return { ...p, unavailable: l };
-  }), []);
+  const toggleItem  = useCallback((id) => {
+    setStore(prev => {
+      const l = (prev.unavailable||[]).includes(id)
+        ? (prev.unavailable||[]).filter(x=>x!==id)
+        : [...(prev.unavailable||[]),id];
+      const next = { ...prev, unavailable: l };
+      saveToCloud(next);
+      return next;
+    });
+  }, [saveToCloud]);
 
-  const setPrice   = useCallback((id, price) => setStore(p => ({ ...p, priceOverrides: { ...(p.priceOverrides||{}), [id]: parseFloat(price) } })), []);
-  const resetPrice = useCallback((id) => setStore(p => { const o={...(p.priceOverrides||{})}; delete o[id]; return {...p,priceOverrides:o}; }), []);
+  // Price / image overrides
+  const setPrice   = useCallback((id,price) => set({ priceOverrides: { ...(store.priceOverrides||{}), [id]: parseFloat(price) } }), [set, store.priceOverrides]);
+  const resetPrice = useCallback((id) => { const o={...(store.priceOverrides||{})}; delete o[id]; set({ priceOverrides: o }); }, [set, store.priceOverrides]);
   const getPrice   = useCallback((item) => { const o=store.priceOverrides||{}; return o[item.id]!==undefined ? o[item.id] : item.price; }, [store.priceOverrides]);
-
-  const setImage   = useCallback((id, url) => setStore(p => ({ ...p, imageOverrides: { ...(p.imageOverrides||{}), [id]: url } })), []);
-  const resetImage = useCallback((id) => setStore(p => { const o={...(p.imageOverrides||{})}; delete o[id]; return {...p,imageOverrides:o}; }), []);
+  const setImage   = useCallback((id,url) => set({ imageOverrides: { ...(store.imageOverrides||{}), [id]: url } }), [set, store.imageOverrides]);
+  const resetImage = useCallback((id) => { const o={...(store.imageOverrides||{})}; delete o[id]; set({ imageOverrides: o }); }, [set, store.imageOverrides]);
   const getImage   = useCallback((item) => { const o=store.imageOverrides||{}; return o[item.id]||item.image; }, [store.imageOverrides]);
 
-  const addCustomItem    = useCallback((item) => setStore(p => ({ ...p, customItems: [...(p.customItems||[]), {...item,id:'custom-'+Date.now(),custom:true}] })), []);
-  const editCustomItem   = useCallback((id,u) => setStore(p => ({ ...p, customItems:(p.customItems||[]).map(i=>i.id===id?{...i,...u}:i) })), []);
-  const removeCustomItem = useCallback((id) => setStore(p => ({ ...p, customItems:(p.customItems||[]).filter(i=>i.id!==id) })), []);
+  // Custom items
+  const addCustomItem    = useCallback((item) => set({ customItems: [...(store.customItems||[]), {...item,id:'custom-'+Date.now(),custom:true}] }), [set, store.customItems]);
+  const editCustomItem   = useCallback((id,u) => set({ customItems: (store.customItems||[]).map(i=>i.id===id?{...i,...u}:i) }), [set, store.customItems]);
+  const removeCustomItem = useCallback((id) => set({ customItems: (store.customItems||[]).filter(i=>i.id!==id) }), [set, store.customItems]);
 
-  const toggleBaseCoupon   = useCallback((id) => setStore(p => { const ids=(p.activeCouponIds||[]).includes(id)?(p.activeCouponIds||[]).filter(x=>x!==id):[...(p.activeCouponIds||[]),id]; return {...p,activeCouponIds:ids}; }), []);
+  // Coupons
+  const toggleBaseCoupon   = useCallback((id) => { const ids=(store.activeCouponIds||[]).includes(id)?(store.activeCouponIds||[]).filter(x=>x!==id):[...(store.activeCouponIds||[]),id]; set({activeCouponIds:ids}); }, [set,store.activeCouponIds]);
   const isCouponActive     = useCallback((id) => { const c=(store.customCoupons||[]).find(x=>x.id===id); if(c) return c.active!==false; return (store.activeCouponIds||[]).includes(id); }, [store]);
-  const addCoupon          = useCallback((c) => setStore(p => ({ ...p, customCoupons:[...(p.customCoupons||[]),{...c,id:'coupon-custom-'+Date.now(),active:true}] })), []);
-  const editCoupon         = useCallback((id,u) => setStore(p => ({ ...p, customCoupons:(p.customCoupons||[]).map(c=>c.id===id?{...c,...u}:c) })), []);
-  const deleteCoupon       = useCallback((id) => setStore(p => ({ ...p, customCoupons:(p.customCoupons||[]).filter(c=>c.id!==id) })), []);
-  const toggleCustomCoupon = useCallback((id) => setStore(p => ({ ...p, customCoupons:(p.customCoupons||[]).map(c=>c.id===id?{...c,active:!c.active}:c) })), []);
+  const addCoupon          = useCallback((c) => set({ customCoupons:[...(store.customCoupons||[]),{...c,id:'coupon-custom-'+Date.now(),active:true}] }), [set,store.customCoupons]);
+  const editCoupon         = useCallback((id,u) => set({ customCoupons:(store.customCoupons||[]).map(c=>c.id===id?{...c,...u}:c) }), [set,store.customCoupons]);
+  const deleteCoupon       = useCallback((id) => set({ customCoupons:(store.customCoupons||[]).filter(c=>c.id!==id) }), [set,store.customCoupons]);
+  const toggleCustomCoupon = useCallback((id) => set({ customCoupons:(store.customCoupons||[]).map(c=>c.id===id?{...c,active:!c.active}:c) }), [set,store.customCoupons]);
 
-  const toggleBaseDeal = useCallback((id) => setStore(p => { const ids=(p.activeDealIds||[]).includes(id)?(p.activeDealIds||[]).filter(x=>x!==id):[...(p.activeDealIds||[]),id]; return {...p,activeDealIds:ids}; }), []);
+  // Deals
+  const toggleBaseDeal = useCallback((id) => { const ids=(store.activeDealIds||[]).includes(id)?(store.activeDealIds||[]).filter(x=>x!==id):[...(store.activeDealIds||[]),id]; set({activeDealIds:ids}); }, [set,store.activeDealIds]);
   const isDealActive   = useCallback((id) => { const d=(store.customDeals||[]).find(x=>x.id===id); if(d) return d.active!==false; return (store.activeDealIds||[]).includes(id); }, [store]);
-  const addDeal        = useCallback((d) => setStore(p => ({ ...p, customDeals:[...(p.customDeals||[]),{...d,id:'deal-custom-'+Date.now(),active:true}] })), []);
-  const editDeal       = useCallback((id,u) => setStore(p => ({ ...p, customDeals:(p.customDeals||[]).map(d=>d.id===id?{...d,...u}:d) })), []);
-  const deleteDeal     = useCallback((id) => setStore(p => ({ ...p, customDeals:(p.customDeals||[]).filter(d=>d.id!==id) })), []);
+  const addDeal        = useCallback((d) => set({ customDeals:[...(store.customDeals||[]),{...d,id:'deal-custom-'+Date.now(),active:true}] }), [set,store.customDeals]);
+  const editDeal       = useCallback((id,u) => set({ customDeals:(store.customDeals||[]).map(d=>d.id===id?{...d,...u}:d) }), [set,store.customDeals]);
+  const deleteDeal     = useCallback((id) => set({ customDeals:(store.customDeals||[]).filter(d=>d.id!==id) }), [set,store.customDeals]);
 
   const setAnnouncement = useCallback((msg) => set({ announcement: msg }), [set]);
   const setBranding     = useCallback((patch) => set(patch), [set]);
@@ -114,11 +195,12 @@ export function AdminProvider({ children }) {
   const allDeals       = [...BASE_SPECIALS, ...(store.customDeals||[])];
   const visibleDeals   = allDeals.filter(d => isDealActive(d.id));
   const fullMenu       = [...MENU, ...(store.customItems||[])];
-  const resetAll       = useCallback(() => setStore({...DEFAULT}), []);
+  const resetAll       = useCallback(() => { setStore({...DEFAULT}); saveToCloud({...DEFAULT}); }, [saveToCloud]);
 
   return (
     <Ctx.Provider value={{
       store, authed, fullMenu, allCoupons, visibleCoupons, allDeals, visibleDeals,
+      cloudStatus,
       login, logout,
       isAvailable, toggleItem,
       setPrice, resetPrice, getPrice,
