@@ -54,7 +54,13 @@
 
 /* ── RESET ──────────────────────────────────────────────────── */
 *,*::before,*::after { margin:0;padding:0;box-sizing:border-box; }
-html { scroll-behavior:smooth;font-size:16px; }
+html { font-size:16px; scroll-behavior:smooth; }
+/* When Lenis is active it controls the scroll — disable native smooth so they don't fight */
+html.lenis,html.lenis body { height:auto; }
+html.lenis-smooth { scroll-behavior:auto !important; }
+.lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior:contain; }
+.lenis.lenis-stopped { overflow:clip; }
+.lenis.lenis-smooth iframe { pointer-events:none; }
 body {
   background:var(--k-black);
   color:var(--k-text);

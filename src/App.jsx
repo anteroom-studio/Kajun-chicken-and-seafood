@@ -14,6 +14,7 @@ import CartSidebar from './components/CartSidebar';
 import Footer from './components/Footer';
 import AnnouncementBar from './components/AnnouncementBar';
 import KAI from './components/KAI';
+import SmoothScroll from './components/SmoothScroll';
 import Home from './pages/Home';
 import Menu from './pages/Menu';
 import About from './pages/About';
@@ -33,7 +34,13 @@ function Layout() {
   const isReceipt = loc.pathname === '/receipt';
   const isAdmin   = loc.pathname === '/admin';
 
-  useEffect(() => { window.scrollTo({ top:0, behavior:'instant' }); }, [loc.pathname]);
+  // Note: SmoothScroll handles scroll-to-top on route change for desktop.
+  // Touch devices get a native instant scroll here.
+  useEffect(() => {
+    if (window.matchMedia?.('(hover: none)').matches) {
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    }
+  }, [loc.pathname]);
 
   // Scroll-reveal: any element with class "reveal" fades in when it enters the viewport.
   useEffect(() => {
@@ -90,13 +97,15 @@ const ROUTER_BASENAME = (import.meta.env.BASE_URL || '/').replace(/\/$/, '') || 
 export default function App() {
   return (
     <BrowserRouter basename={ROUTER_BASENAME} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <AdminProvider>
-        <CartProvider>
-          <ToastProvider>
-            <Layout/>
-          </ToastProvider>
-        </CartProvider>
-      </AdminProvider>
+      <SmoothScroll>
+        <AdminProvider>
+          <CartProvider>
+            <ToastProvider>
+              <Layout/>
+            </ToastProvider>
+          </CartProvider>
+        </AdminProvider>
+      </SmoothScroll>
     </BrowserRouter>
   );
 }
