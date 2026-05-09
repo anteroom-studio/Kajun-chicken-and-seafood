@@ -50,17 +50,26 @@
   color:rgba(248,244,239,.85);letter-spacing:.3px;
 }
 .hero__kai-badge-dot {
-  /* visible breathing pulse — clear but not flicker */
-  width:8px;height:8px;border-radius:50%;
+  /* breathing pulse — scale + opacity + halo so it's clearly alive */
+  width:9px;height:9px;border-radius:50%;
   background:#00d26a;
-  box-shadow:0 0 0 0 rgba(0,210,106,.6), 0 0 8px rgba(0,210,106,.7);
-  animation:grnpulse 2.2s ease-in-out infinite;
+  box-shadow:0 0 0 0 rgba(0,210,106,.65), 0 0 8px rgba(0,210,106,.8);
+  animation:grnpulse 1.9s ease-in-out infinite;
   flex-shrink:0;
   position:relative;
+  transform-origin:center;
 }
 @keyframes grnpulse{
-  0%, 100% { box-shadow: 0 0 0 0 rgba(0,210,106,.6),   0 0 8px  rgba(0,210,106,.75); opacity:1; }
-  50%      { box-shadow: 0 0 0 7px rgba(0,210,106,0),  0 0 12px rgba(0,210,106,.45); opacity:.6; }
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(0,210,106,.65), 0 0 6px  rgba(0,210,106,.7);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.18);
+    box-shadow: 0 0 0 8px rgba(0,210,106,0),  0 0 14px rgba(0,210,106,.45);
+    opacity: .55;
+  }
 }
 
 /* Giant headline */
@@ -128,21 +137,21 @@
 }
 .hero__visual-ring {
   position:absolute;border-radius:50%;
-  animation:ringPulse 4.5s ease-in-out infinite;
+  animation:ringPulse 3.4s ease-in-out infinite;
   will-change:transform,opacity;
 }
 .hero__visual-ring--1 {
   width:440px;height:440px;
-  border:1px solid rgba(200,16,46,.2);
-  box-shadow:0 0 60px rgba(200,16,46,.06);
+  border:1px solid rgba(200,16,46,.22);
+  box-shadow:0 0 60px rgba(200,16,46,.08);
 }
 .hero__visual-ring--2 {
   width:560px;height:560px;
-  border:1px solid rgba(212,160,23,.1);
-  animation-delay:1.5s;
+  border:1px solid rgba(212,160,23,.12);
+  animation-delay:1.2s;
 }
-/* visible breathe — middle ground between the original and the muted version */
-@keyframes ringPulse{0%,100%{transform:scale(1);opacity:.65}50%{transform:scale(1.035);opacity:1}}
+/* clearly alive — visible scale + opacity sweep */
+@keyframes ringPulse{0%,100%{transform:scale(1);opacity:.55}50%{transform:scale(1.06);opacity:1}}
 
 .hero__visual-card {
   position:relative;z-index:2;
@@ -152,13 +161,13 @@
     0 40px 100px rgba(0,0,0,.8),
     0 0 0 1px rgba(200,16,46,.25),
     0 0 60px rgba(200,16,46,.1);
-  animation:heroFloat 6s ease-in-out infinite;
+  animation:heroFloat 4.8s ease-in-out infinite;
   will-change:transform;
 }
-/* gentle natural float — small vertical drift + a hint of rotation, no rocking */
+/* clearly floating — visible drift + soft sway */
 @keyframes heroFloat{
-  0%, 100% { transform: translateY(0)    rotate(-0.6deg); }
-  50%      { transform: translateY(-12px) rotate(0.6deg); }
+  0%, 100% { transform: translateY(0)    rotate(-1deg); }
+  50%      { transform: translateY(-14px) rotate(1deg); }
 }
 .hero__visual-img { width:100%;aspect-ratio:4/3;object-fit:cover;display:block; }
 
@@ -217,7 +226,7 @@
 }
 .marquee-track {
   display:flex;width:max-content;
-  animation:marqueeRun 38s linear infinite;
+  animation:marqueeRun 30s linear infinite;
   will-change:transform;
 }
 .marquee-band:hover .marquee-track { animation-play-state: paused; }
