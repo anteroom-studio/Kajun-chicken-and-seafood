@@ -35,6 +35,23 @@ function Layout() {
 
   useEffect(() => { window.scrollTo({ top:0, behavior:'instant' }); }, [loc.pathname]);
 
+  // Scroll-reveal: any element with class "reveal" fades in when it enters the viewport.
+  useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') return;
+    const targets = document.querySelectorAll('.reveal:not(.in)');
+    if (!targets.length) return;
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((e) => {
+        if (e.isIntersecting) {
+          e.target.classList.add('in');
+          io.unobserve(e.target);
+        }
+      });
+    }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
+    targets.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, [loc.pathname]);
+
   return (
     <>
       <div className="grain-overlay" aria-hidden="true"/>
@@ -43,7 +60,7 @@ function Layout() {
       {!isAdmin && <Navbar onCart={() => setCartOpen(true)}/>}
       {!isAdmin && <CartSidebar open={cartOpen} onClose={() => setCartOpen(false)}/>}
 
-      <main>
+      <main key={loc.pathname} className="page-fade">
         <Routes>
           <Route path="/"                element={<Home/>}/>
           <Route path="/menu"            element={<Menu/>}/>

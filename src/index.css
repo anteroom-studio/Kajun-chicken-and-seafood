@@ -195,3 +195,39 @@ a,button { -webkit-tap-highlight-color:transparent;touch-action:manipulation; }
   will-change:transform;-webkit-backface-visibility:hidden;backface-visibility:hidden;
 }
 .fc:hover,.mc:hover,.why-card:hover,.cat-chip:hover { will-change:transform,box-shadow; }
+
+/* ── PAGE TRANSITION ────────────────────────────────────────── */
+.page-fade { animation:pageFade .45s var(--e-out) both; }
+@keyframes pageFade {
+  from { opacity:0;transform:translateY(8px); }
+  to   { opacity:1;transform:translateY(0); }
+}
+
+/* ── BUTTON PRESS ───────────────────────────────────────────── */
+button:not(:disabled):active,
+.btn:not(:disabled):active { transform:scale(.97); }
+
+/* ── SCROLL REVEAL ──────────────────────────────────────────── */
+.reveal { opacity:0;transform:translateY(16px);transition:opacity .7s var(--e-out),transform .7s var(--e-out); }
+.reveal.in { opacity:1;transform:none; }
+.reveal--lift { transform:translateY(28px); }
+.reveal--scale { transform:scale(.96); }
+.reveal--scale.in { transform:scale(1); }
+@media(prefers-reduced-motion:reduce){ .reveal{opacity:1;transform:none;transition:none;} }
+
+/* ── HOVER LIFT (cards) ─────────────────────────────────────── */
+.lift { transition:transform .35s var(--e-out),box-shadow .35s var(--e-out); }
+.lift:hover { transform:translateY(-3px); }
+
+/* ── FOCUS RING ─────────────────────────────────────────────── */
+*:focus-visible {
+  outline:2px solid var(--k-gold);
+  outline-offset:2px;
+  border-radius:var(--r);
+}
+
+/* ── REDUCED MOTION ─────────────────────────────────────────── */
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after { animation-duration:.01ms!important;transition-duration:.01ms!important; }
+  .grain-overlay { display:none; }
+}
