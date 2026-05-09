@@ -1,5 +1,7 @@
 # Kajun Chicken & Seafood
 
+> Live: [kajun-chicken-and-seafood.vercel.app](https://kajun-chicken-and-seafood.vercel.app)
+
 Menu and ordering interface system for a restaurant platform.
 
 Designed as a structured upgrade focusing on interface clarity, ordering flow, and operational flexibility.

@@ -50,11 +50,18 @@
   color:rgba(248,244,239,.85);letter-spacing:.3px;
 }
 .hero__kai-badge-dot {
-  width:7px;height:7px;border-radius:50%;
-  background:#00d26a;box-shadow:0 0 7px #00d26a;
-  animation:grnpulse 1.6s infinite;flex-shrink:0;
+  /* breathing glow rather than the harsh on/off opacity flick */
+  width:8px;height:8px;border-radius:50%;
+  background:#00d26a;
+  box-shadow:0 0 0 0 rgba(0,210,106,.55);
+  animation:grnpulse 2.4s ease-in-out infinite;
+  flex-shrink:0;
+  position:relative;
 }
-@keyframes grnpulse{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes grnpulse{
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0,210,106,.55), 0 0 6px rgba(0,210,106,.7); opacity:1; }
+  50%      { box-shadow: 0 0 0 6px rgba(0,210,106,0),  0 0 10px rgba(0,210,106,.4); opacity:.85; }
+}
 
 /* Giant headline */
 .hero__h1 {
@@ -121,19 +128,21 @@
 }
 .hero__visual-ring {
   position:absolute;border-radius:50%;
-  animation:ringPulse 3.5s ease-in-out infinite;
+  animation:ringPulse 6s ease-in-out infinite;
+  will-change:transform,opacity;
 }
 .hero__visual-ring--1 {
   width:440px;height:440px;
-  border:1px solid rgba(200,16,46,.2);
-  box-shadow:0 0 60px rgba(200,16,46,.06);
+  border:1px solid rgba(200,16,46,.18);
+  box-shadow:0 0 60px rgba(200,16,46,.05);
 }
 .hero__visual-ring--2 {
   width:560px;height:560px;
-  border:1px solid rgba(212,160,23,.1);
-  animation-delay:1.2s;
+  border:1px solid rgba(212,160,23,.09);
+  animation-delay:2s;
 }
-@keyframes ringPulse{0%,100%{transform:scale(1);opacity:.6}50%{transform:scale(1.04);opacity:1}}
+/* gentler breathe — smaller scale + opacity range, double the duration */
+@keyframes ringPulse{0%,100%{transform:scale(1);opacity:.7}50%{transform:scale(1.025);opacity:.95}}
 
 .hero__visual-card {
   position:relative;z-index:2;
@@ -143,9 +152,11 @@
     0 40px 100px rgba(0,0,0,.8),
     0 0 0 1px rgba(200,16,46,.25),
     0 0 60px rgba(200,16,46,.1);
-  animation:heroFloat 5s ease-in-out infinite;
+  animation:heroFloat 7s ease-in-out infinite;
+  will-change:transform;
 }
-@keyframes heroFloat{0%,100%{transform:translateY(0) rotate(-1.5deg)}50%{transform:translateY(-16px) rotate(1.5deg)}}
+/* removed the rotation that made the image look like it was rocking — pure vertical drift now */
+@keyframes heroFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
 .hero__visual-img { width:100%;aspect-ratio:4/3;object-fit:cover;display:block; }
 
 /* Price tag on visual */
@@ -197,9 +208,17 @@
   border-top:1px solid rgba(255,255,255,.08);
   border-bottom:1px solid rgba(0,0,0,.3);
   position:relative;z-index:2;
+  /* soft fade-out at both edges so text glides in/out instead of cutting hard */
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 6%, #000 94%, transparent 100%);
+          mask-image: linear-gradient(90deg, transparent 0, #000 6%, #000 94%, transparent 100%);
 }
-.marquee-track { display:flex;width:max-content;animation:marqueeRun 28s linear infinite; }
-@keyframes marqueeRun{from{transform:translateX(0)}to{transform:translateX(-33.333%)}}
+.marquee-track {
+  display:flex;width:max-content;
+  animation:marqueeRun 60s linear infinite;
+  will-change:transform;
+}
+.marquee-band:hover .marquee-track { animation-play-state: paused; }
+@keyframes marqueeRun{from{transform:translate3d(0,0,0)}to{transform:translate3d(-33.3334%,0,0)}}
 .marquee-item {
   font-family:var(--f-ui);font-weight:800;font-size:11px;
   letter-spacing:4px;text-transform:uppercase;
@@ -596,4 +615,13 @@
   .why-grid     { grid-template-columns:1fr 1fr; }
   .deals-specials-row { grid-template-columns:1fr; }
   .deals-coupons-grid { grid-template-columns:1fr; }
+}
+
+/* ── REDUCED-MOTION SAFETY ──────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .hero__kai-badge-dot,
+  .hero__visual-ring,
+  .hero__visual-card,
+  .marquee-track,
+  .kai-banner__icon { animation: none !important; }
 }
