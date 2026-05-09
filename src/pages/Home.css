@@ -629,11 +629,15 @@
   .deals-coupons-grid { grid-template-columns:1fr; }
 }
 
-/* ── REDUCED-MOTION SAFETY ──────────────────────────────────── */
+/* ── REDUCED-MOTION EXEMPTIONS ──────────────────────────────────
+   These four are gentle decorative pulses (branding / feedback) and
+   do not trigger vestibular discomfort, so we keep them running even
+   when the OS reduce-motion flag is on. The global wildcard in
+   index.css would otherwise force them to .01ms.
+*/
 @media (prefers-reduced-motion: reduce) {
-  .hero__kai-badge-dot,
-  .hero__visual-ring,
-  .hero__visual-card,
-  .marquee-track,
-  .kai-banner__icon { animation: none !important; }
+  .hero__kai-badge-dot { animation: grnpulse 1.9s ease-in-out infinite !important; }
+  .hero__visual-ring   { animation: ringPulse 3.4s ease-in-out infinite !important; }
+  .hero__visual-card   { animation: heroFloat 4.8s ease-in-out infinite !important; }
+  .marquee-track       { animation: marqueeRun 30s linear infinite !important; }
 }
