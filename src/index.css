@@ -231,3 +231,52 @@ button:not(:disabled):active,
   *,*::before,*::after { animation-duration:.01ms!important;transition-duration:.01ms!important; }
   .grain-overlay { display:none; }
 }
+
+/* ── MOBILE / TOUCH POLISH ──────────────────────────────────── */
+
+/* dvh keeps full-screen elements honest when iOS chrome appears/hides */
+@supports (height: 100dvh) {
+  body                 { min-height: 100dvh; }
+  .page-wrap           { min-height: 100dvh; }
+  .arcade, .rpage      { min-height: 100dvh; }
+  .adm, .adm-dash      { min-height: 100dvh; }
+  .land, .land-page    { min-height: 100dvh; }
+}
+
+/* Touch devices: disable sticky :hover transforms after tap, but keep colour shift */
+@media (hover: none) {
+  .btn:hover,
+  .btn-red:hover, .btn-gold:hover,
+  .btn-ghost:hover, .btn-outline-red:hover,
+  .lift:hover,
+  .fc:hover, .mc:hover, .why-card:hover, .cat-chip:hover,
+  .kai-quick__btn:hover,
+  .kai-bubble:hover { transform: none !important; }
+  /* Stop the after-tap shimmer overlay from sticking */
+  .btn::after { opacity: 0 !important; }
+}
+
+/* Prevent iOS auto-zoom when focusing inputs (font must be >= 16px) */
+@media (max-width: 768px) {
+  input, textarea, select { font-size: 16px; }
+  .kai-input  { font-size: 15px; }     /* visually fine, paired with a 16px parent rule below */
+}
+@media (max-width: 768px) and (hover: none) {
+  .kai-input { font-size: 16px; }      /* on real touch devices, force 16 to kill zoom */
+}
+
+/* Smoother momentum + contained overscroll on scrollable surfaces */
+.kai-msgs, .cart, .mpage__cats, main {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Page transition is lighter on mobile so it never feels sluggish */
+@media (max-width: 768px) {
+  .page-fade { animation-duration: .28s; }
+}
+
+/* Slight buffer at the very bottom on iOS (safe area) */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .pb-safe-ios { padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+}

@@ -292,9 +292,19 @@
 
 @media (max-width:600px) {
   .kai-window { padding: 0; }
-  .kai-window__panel { border-radius: 0; height: 100vh; width: 100vw; }
+  .kai-window__panel {
+    border-radius: 0;
+    height: 100vh;            /* fallback */
+    height: 100dvh;           /* honors iOS chrome */
+    width: 100vw;
+  }
   .kai-cards { grid-template-columns: 1fr; }
   .kai-bubble { bottom: 20px; right: 20px; }
+  /* leave room under the input for iOS home indicator */
+  .kai-input-area { padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+  /* recovery banner reads better at the right size */
+  .kai-recovery { font-size: 11.5px; padding: 10px 14px; }
+  .kai-recovery__btn { padding: 7px 11px; }
 }
 
 /* ── PROMOTED KAI BUBBLE ─────────────────────────────────── */
