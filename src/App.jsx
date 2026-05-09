@@ -65,9 +65,14 @@ function Layout() {
   );
 }
 
+// Vite injects import.meta.env.BASE_URL from vite.config.js base.
+//   GitHub Pages build (BASE_PATH=/Kajun-chicken-and-seafood/) -> '/Kajun-chicken-and-seafood/'
+//   Vercel / custom domain (no BASE_PATH)                       -> '/'
+const ROUTER_BASENAME = (import.meta.env.BASE_URL || '/').replace(/\/$/, '') || '/';
+
 export default function App() {
   return (
-    <BrowserRouter basename="/Kajun-chicken-and-seafood" future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+    <BrowserRouter basename={ROUTER_BASENAME} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AdminProvider>
         <CartProvider>
           <ToastProvider>

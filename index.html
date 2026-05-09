@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <link rel="icon" type="image/svg+xml" href="/kajun-chicken/favicon.svg" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Kajun Chicken & Seafood — Authentic Cajun cuisine across Ontario. Bold flavors. Louisiana soul. 100% Halal." />
@@ -19,7 +19,11 @@
       #root.ready { opacity: 1; }
     </style>
   <script>
+    // GitHub Pages SPA fallback — only fires when hosted on github.io.
+    // On other hosts (Vercel, custom domain) the rewrite handles routing
+    // and this script must not prepend the GH Pages base path.
     (function() {
+      if (!/\.github\.io$/.test(location.hostname)) return;
       var redirect = sessionStorage.getItem('spa_redirect');
       if (redirect && redirect !== '/') {
         sessionStorage.removeItem('spa_redirect');
