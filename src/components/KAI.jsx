@@ -74,17 +74,17 @@ const QUICK = [
 ];
 
 // ── Main KAI Component ────────────────────────────────────────
-// Default API token — assembled from chunks so it doesn't trip
-// GitHub's secret scanner. Effectively public once shipped (Vite
-// inlines it into the client bundle, same as VITE_* env vars), but
-// rate-limits on the upstream provider keep abuse bounded. If this
-// gets exhausted, the recovery banner lets the visitor plug in their
-// own key/endpoint.
-const DEFAULT_GROQ_KEY = ['gsk', '_1xccvdnDQxilO7hi', 'zqx0WGdyb3FYFJQ', 'GlhusXGxeF2UcJVOQTmYI'].join('');
+// KAI's chat by default goes through /api/kai-chat — a Vercel
+// serverless function that holds the Groq key server-side
+// (GROQ_API_KEY env var) and rate-limits per IP. The key never
+// reaches the browser bundle, network responses, or git history.
+//
+// A visitor can optionally plug in their OWN Groq key via the
+// recovery banner; in that mode we hit api.groq.com directly with
+// their key and skip the proxy. Their bill, their request.
+const KAI_PROXY_ENDPOINT = '/api/kai-chat';
 
 export default function KAI() {
-  // Priority: user's saved key (if any) -> Vite env var -> built-in default.
-  const ENV_KEY = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GROQ_API_KEY) || '';
   const { store, isAvailable, fullMenu, isCouponActive } = useAdmin();
 
   // Build available items set for this session
@@ -146,7 +146,9 @@ ${activeCouponsList.length > 0 ? activeCouponsList.map(c => `- ${c.tag}: ${c.tit
   }, []);
   const [keyMode, setKeyMode] = useState(false);
   const [keyDraft, setKeyDraft] = useState('');
-  const [apiKey, setApiKey]   = useState(() => localStorage.getItem('kai_key') || ENV_KEY || DEFAULT_GROQ_KEY);
+  // Empty = use the server-side proxy. A non-empty string means the
+  // visitor has plugged in their own Groq key and we'll hit Groq direct.
+  const [apiKey, setApiKey]   = useState(() => localStorage.getItem('kai_key') || '');
   const [needsRecovery, setNeedsRecovery] = useState(false);
 
   const [msgs, setMsgs] = useState([{
@@ -179,7 +181,7 @@ ${activeCouponsList.length > 0 ? activeCouponsList.map(c => `- ${c.tag}: ${c.tit
 
   const removeKey = () => {
     localStorage.removeItem('kai_key');
-    setApiKey(ENV_KEY || DEFAULT_GROQ_KEY);
+    setApiKey('');             // fall back to the server-side proxy
     setKeyDraft('');
     setNeedsRecovery(false);
   };
@@ -193,8 +195,8 @@ ${activeCouponsList.length > 0 ? activeCouponsList.map(c => `- ${c.tag}: ${c.tit
     const text = (textOverride ?? input).trim();
     if (!text || loading) return;
 
-    // No prompt for key on first send — DEFAULT_GROQ_KEY is always available.
-    // The recovery banner only appears after an actual API failure.
+    // No prompt for key on first send — the proxy handles auth. The
+    // recovery banner only appears after an actual API failure.
 
     const userMsg = { role: 'user', content: text, id: Date.now(), cards: [] };
     setMsgs(prev => [...prev, userMsg]);
@@ -204,46 +206,60 @@ ${activeCouponsList.length > 0 ? activeCouponsList.map(c => `- ${c.tag}: ${c.tit
     try {
       // Build conversation history (last 14 msgs for context)
       const history = msgs.slice(-14).map(m => ({ role: m.role, content: m.content }));
+      const messages = [
+        { role: 'system', content: dynamicPrompt },
+        ...history,
+        { role: 'user', content: text },
+      ];
 
-      // Try best model → fallback to fast model
-      const MODELS = ['llama-3.3-70b-versatile', 'llama3-70b-8192', 'llama3-8b-8192'];
       let reply = null;
 
-      for (const model of MODELS) {
-        try {
-          const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${apiKey}`,
-            },
-            body: JSON.stringify({
-              model,
-              max_tokens: 500,
-              temperature: 0.78,
-              messages: [
-                { role: 'system', content: dynamicPrompt },
-                ...history,
-                { role: 'user', content: text },
-              ],
-            }),
-          });
-
-          if (res.ok) {
-            const data = await res.json();
-            reply = data.choices?.[0]?.message?.content;
-            if (reply) break;
-          } else if (res.status === 429) {
-            // Rate limit — try next model
+      if (apiKey) {
+        // Visitor supplied their own Groq key — hit Groq directly so
+        // the proxy quota is preserved for default visitors.
+        const MODELS = ['llama-3.3-70b-versatile', 'llama3-70b-8192', 'llama3-8b-8192'];
+        for (const model of MODELS) {
+          try {
+            const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`,
+              },
+              body: JSON.stringify({
+                model, max_tokens: 500, temperature: 0.78, messages,
+              }),
+            });
+            if (res.ok) {
+              const data = await res.json();
+              reply = data.choices?.[0]?.message?.content;
+              if (reply) break;
+            } else if (res.status === 429) {
+              continue;
+            } else {
+              const err = await res.json().catch(() => ({}));
+              throw new Error(err?.error?.message || `HTTP ${res.status}`);
+            }
+          } catch (modelErr) {
+            if (modelErr.message?.includes?.('HTTP')) throw modelErr;
             continue;
-          } else {
-            const err = await res.json().catch(() => ({}));
-            throw new Error(err?.error?.message || `HTTP ${res.status}`);
           }
-        } catch (modelErr) {
-          if (modelErr.message.includes('HTTP')) throw modelErr;
-          continue; // try next model
         }
+      } else {
+        // Default path — call the server-side proxy. The serverless
+        // function holds the Groq key, picks the model, and applies
+        // per-IP rate limiting. Browser sees no credentials.
+        const res = await fetch(KAI_PROXY_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err?.error || `HTTP ${res.status}`);
+        }
+        const data = await res.json();
+        reply = data.choices?.[0]?.message?.content;
       }
 
       if (!reply) throw new Error('Unable to get response — please try again');
@@ -347,11 +363,8 @@ ${activeCouponsList.length > 0 ? activeCouponsList.map(c => `- ${c.tag}: ${c.tit
               <div className="kai-keypanel">
                 <div className="kai-kp__title">🔑 Groq API Key</div>
                 <p className="kai-kp__desc">
-                  Free at <a href="https://console.groq.com" target="_blank" rel="noopener noreferrer">console.groq.com</a>
-                  {' — or add '}
-                  <code>VITE_GROQ_API_KEY=gsk_...</code>
-                  {' to your '}
-                  <code>.env</code> file
+                  Free at <a href="https://console.groq.com" target="_blank" rel="noopener noreferrer">console.groq.com</a>.
+                  Stored in your browser only — your bill, your requests.
                 </p>
                 <div className="kai-kp__row">
                   <input

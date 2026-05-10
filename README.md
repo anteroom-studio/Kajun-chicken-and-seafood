@@ -44,18 +44,36 @@ It emphasizes:
 
 ```bash
 npm install
+cp .env.example .env       # then set your real GROQ_API_KEY
 npm run dev
 ```
 
-Use `.env.example` for any required local configuration.
+The `.env` file is gitignored. The Groq key is read by the
+serverless function at `api/kai-chat.js`, never by the browser.
+
+---
+
+## KAI (the AI ordering assistant) — how the key works
+
+KAI's chat goes through a Vercel serverless function at
+`/api/kai-chat`. The function reads `GROQ_API_KEY` from the
+project's runtime environment and forwards each chat to Groq.
+
+The browser sees no credentials. Per-IP rate limiting (30/hour)
+prevents anyone from abusing the public endpoint to drive up the
+operator's Groq bill.
+
+A visitor can optionally plug in their own Groq key via the
+recovery banner; in that mode the browser hits Groq directly with
+the visitor's key (their bill, their request) and the proxy is
+bypassed.
 
 ---
 
 ## Deployment
 
-Configured for deployment via GitHub Actions.
-
-Environment variables are managed through repository settings.
+Deployed on Vercel. Set `GROQ_API_KEY` under Project Settings →
+Environment Variables (Production + Preview). Never commit it.
 
 ---
 
